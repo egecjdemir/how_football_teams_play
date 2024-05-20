@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visualize Clustering</title>
+    <script>
+        function disableButton(buttonId) {
+            var button = document.getElementById(buttonId);
+            button.disabled = true;
+        }
+
+        function toggleImage(imgId) {
+            var img = document.getElementById(imgId);
+            if (img.style.display === 'none') {
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+
+        function generateDendrogram() {
+            fetch('/dendrogram', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ team: "{{ team }}" })
+            })
+            .then(response => {
+                if (response.status === 204) {
+                    disableButton('generateDendroBtn');
+                    document.getElementById('toggleDendroBtn').disabled = false;
+                    alert('Dendrogram generated successfully!');
+                }
+            });
+        }
+
+        function toggleDendrogram() {
+            var img = document.getElementById('dendrogram');
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = "/static/images/dendro.png?" + new Date().getTime(); // Force refresh
+            }
+            toggleImage('dendrogram');
+        }
+
+        function generateScatterPlot() {
+            fetch('/scatter_plot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ team: "{{ team }}" })
+            })
+            .then(response => {
+                if (response.status === 204) {
+                    disableButton('generateScatterBtn');
+                    document.getElementById('toggleScatterBtn').disabled = false;
+                    alert('Scatter plot generated successfully!');
+                }
+            });
+        }
+
+        function toggleScatterPlot() {
+            var img = document.getElementById('scatterPlot');
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = "/static/images/scatter.png?" + new Date().getTime(); // Force refresh
+            }
+            toggleImage('scatterPlot');
+        }
+    </script>
+</head>
+<body>
+    <h1>Visualize Clustering for {{ league or team }}</h1>
+    <button id="generateDendroBtn" onclick="generateDendrogram()">Generate Dendrogram</button>
+    <button id="toggleDendroBtn" onclick="toggleDendrogram()" disabled>Toggle Dendrogram</button>
+    <img id="dendrogram" src="#" alt="Dendrogram" style="display:none;">
+
+    <button id="generateScatterBtn" onclick="generateScatterPlot()">Generate Scatter Plot</button>
+    <button id="toggleScatterBtn" onclick="toggleScatterPlot()" disabled>Toggle Scatter Plot</button>
+    <img id="scatterPlot" src="#" alt="Scatter Plot" style="display:none;">
+
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>

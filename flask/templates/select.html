@@ -12,7 +12,7 @@
 </head>
 <body>
     <h1>Select a Football League or Enter a Team Name</h1>
-    <form action="{{ url_for('plots') }}" method="post">
+    <form action="{{ url_for('options') }}" method="post">
         <label for="team">Team Name:</label>
         <input type="text" id="team" name="team" list="team-names" oninput="disableInput('league', 'team')">
         <datalist id="team-names">

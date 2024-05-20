@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Option</title>
+</head>
+<body>
+    <h1>Select an Option for {{ league or team }}</h1>
+    <form action="{{ url_for('recommend_playing_style') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Recommend Playing Style</button>
+    </form>
+    <form action="{{ url_for('compare_cluster_statistics') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Compare Cluster Statistics</button>
+    </form>
+    <form action="{{ url_for('visualize_clustering') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Visualize the Clustering</button>
+    </form>
+    <form action="{{ url_for('check_cluster_probabilities') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Check Cluster Probabilities</button>
+    </form>
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>
