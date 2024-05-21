@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def plot_generation_helper(folders_dict, filename, chosen_team_name=None):
+def plot_generation_helper(folders_dict, filename, chosen_team_name=None, chosen_league_name = None):
     stats = folders_dict["stats_per_cluster"][filename].copy()
     stats.rename(columns={'Unnamed: 0': "teamId"}, inplace=True)
 
@@ -13,16 +13,29 @@ def plot_generation_helper(folders_dict, filename, chosen_team_name=None):
     labels = list(cluster_means.teamId)
     if chosen_team_name != None:
         labels += [chosen_team_name]
+    else:
+        labels += [chosen_league_name]
+
+    d = {'Premier League': 'England', 'Bundesliga': 'Germany', 'Serie A': 'Italy', 'Ligue 1': 'France',
+         'La Liga': 'Spain'}
+    chosen_country = None
+    if chosen_league_name in d:
+        chosen_country = d[chosen_league_name]
+
     plots_df = stats_mean.merge(folders_dict["teams_df"]["teams_df.csv"], left_on='teamId', right_on='wyId')
 
     r = plots_df[plots_df["name"] == chosen_team_name].iloc[:, 1:len(cluster_means.columns)]
+
+    if chosen_country is not None:
+        country_df = plots_df.merge(folders_dict["teams_df"]["country_of_teams.csv"])
+        filtered_names = country_df[country_df["country"] == chosen_country]['name'].tolist()
+        r = plots_df[plots_df.name.isin(filtered_names)].iloc[:, 1:len(cluster_means.columns)]
+        r = pd.DataFrame(r.mean()).T
+
     cluster_means.drop(columns=['teamId'], inplace=True)
 
-    if chosen_team_name is not None:
-        print("Cluster Means Columns:", cluster_means.columns)
-        print("Cluster Means Columns:", len(cluster_means.columns))
-        print("Row Columns:", r.columns)
-        print("Row Columns:", len(r.columns))
+    if chosen_team_name is not None or chosen_league_name is not None:
+        print(list(r.iloc[0]))
         cluster_means.loc[len(cluster_means)] = list(r.iloc[0])
 
     return cluster_means, labels

@@ -235,12 +235,13 @@ def generate_bar_plots():
     try:
         data = request.get_json()
         chosen_team_name = data.get('team', '')
+        chosen_league_name = data.get('league', '')
         feature = data.get('feature', '')
         poss_type = data.get('poss_type', '')
 
         if 'in_poss' in poss_type:
-            in_poss_stats, in_poss_labels = plot_generation_helper(folders_dict, 'in_poss_stats_per_cluster.csv', chosen_team_name)
-            trans_in_poss_stats, trans_in_poss_labels = plot_generation_helper(folders_dict, 'trans_in_poss_stats_per_cluster.csv', chosen_team_name)
+            in_poss_stats, in_poss_labels = plot_generation_helper(folders_dict, 'in_poss_stats_per_cluster.csv', chosen_team_name, chosen_league_name)
+            trans_in_poss_stats, trans_in_poss_labels = plot_generation_helper(folders_dict, 'trans_in_poss_stats_per_cluster.csv', chosen_team_name, chosen_league_name)
 
             plt.figure(figsize=(12, 6))
             ax = plt.subplot(121)
