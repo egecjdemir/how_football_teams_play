@@ -23,7 +23,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ team: "{{ team }}" })
+                body: JSON.stringify({ team: "{{ team }}", league: "{{ league }}" })
             })
             .then(response => response.json())
             .then(data => {

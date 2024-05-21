@@ -15,6 +15,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
+from helpers import plot_generation_helper, find_nearest_teams
+
 main_directory = 'data4flask'
 
 # Create an empty dictionary to store dictionaries of DataFrames
@@ -60,7 +62,7 @@ def select():
     if request.method == 'POST':
         if 'start' in request.form:
             team_names = list(folders_dict["teams_df"]["teams_df.csv"].name)
-            return render_template('select.html', leagues=['PL', 'Bundesliga', 'Serie A', 'Ligue 1', 'La Liga'], team_names=team_names)
+            return render_template('select.html', leagues=['Premier League', 'Bundesliga', 'Serie A', 'Ligue 1', 'La Liga'], team_names=team_names)
     return redirect(url_for('welcome'))
 
 
@@ -77,12 +79,25 @@ def recommend_playing_style():
     # Add logic to recommend playing style
     return render_template('recommend_playing_style.html', team=team, league=league)
 
-@app.route('/compare_cluster_statistics', methods=['POST'])
+@app.route('/compare_cluster_statistics', methods=['GET', 'POST'])
 def compare_cluster_statistics():
-    team = request.form.get('team')
-    league = request.form.get('league')
-    # Add logic to compare cluster statistics
-    return render_template('compare_cluster_statistics.html', team=team, league=league)
+    if request.method == 'POST':
+        team = request.form.get('team')
+        league = request.form.get('league')
+
+        in_poss_stats = folders_dict["stats_per_cluster"]["in_poss_stats_per_cluster.csv"]
+        out_of_poss_stats = folders_dict["stats_per_cluster"]["out_of_poss_stats_per_cluster.csv"]
+
+        in_poss_mean = in_poss_stats[[col for col in in_poss_stats.columns if 'mean' in col or col == 'teamId']]
+        in_poss_mean.columns = in_poss_mean.columns.str.replace('_mean', '')
+
+        out_of_poss_mean = out_of_poss_stats[[col for col in out_of_poss_stats.columns if 'mean' in col or col == 'teamId']]
+        out_of_poss_mean.columns = out_of_poss_mean.columns.str.replace('_mean', '')
+
+        return render_template('compare_cluster_statistics.html', team=team, league=league, in_poss_features=in_poss_mean.columns, out_of_poss_features=out_of_poss_mean.columns)
+    if request.method == 'GET':
+        return redirect(url_for('welcome'))
+
 
 @app.route('/visualize_clustering', methods=['POST'])
 def visualize_clustering():
@@ -109,18 +124,34 @@ def plots():
         if team and league:
             return redirect(url_for('select'))
         elif team or league:
-            return render_template('plots.html', team=team, league=league)
+            return render_template('visualize_clustering.html', team=team, league=league)
     return redirect(url_for('select'))
 
 @app.route('/dendrogram', methods=['POST'])
 def dendrogram_plot():
     try:
+        data = request.get_json()
+        chosen_league_name = data.get('league', '')
+        chosen_team_name = data.get('team', '')
+
+        d = {'Premier League': 'England', 'Bundesliga': 'Germany', 'Serie A': 'Italy', 'Ligue 1': 'France', 'La Liga': 'Spain'}
+        chosen_country = None
+        if chosen_league_name in d:
+            chosen_country = d[chosen_league_name]
+
         dendo_df = folders_dict["pca_scatter"]["final_df.csv"].merge(folders_dict["teams_df"]["teams_df.csv"], left_on='teamId', right_on='wyId')
+        filtered_names = []
+        if chosen_country is not None:
+            country_df = dendo_df.merge(folders_dict["teams_df"]["country_of_teams.csv"])
+            filtered_names = country_df[country_df["country"] == chosen_country]['name'].tolist()
+
+        print(f"filtered_names: {filtered_names}")
+
         dendo_names = dendo_df['name'].tolist()
         dendo_df = dendo_df.iloc[:, :15].drop(["teamId", "labels", "names"], axis=1)
 
-        data = request.get_json()
-        chosen_team_name = data.get('team', '')
+
+        print(f"chosen_league_name: {chosen_league_name}")
         print(f"Chosen team name: {chosen_team_name}")
 
         # Generate the linkage matrix
@@ -135,31 +166,6 @@ def dendrogram_plot():
             leaf_font_size=12
         )
 
-        # Function to find the 2 teams above and 2 teams below Liverpool
-        def find_nearest_teams(team_list, target_team, num_up=2, num_down=2):
-            try:
-                target_index = team_list.index(target_team)
-            except ValueError:
-                print(f"{target_team} not found in the team list.")
-                return []
-
-            start_index = max(0, target_index - num_up)
-            end_index = min(len(team_list), target_index + num_down + 1)
-
-            nearest_teams = team_list[start_index:target_index] + team_list[target_index + 1:end_index]
-
-            # Handle edge cases
-            if target_index == 0:
-                nearest_teams = team_list[1:1 + num_up + num_down]
-            elif target_index == len(team_list) - 1:
-                nearest_teams = team_list[-(num_up + num_down + 1):-1]
-            elif target_index < num_up:
-                nearest_teams = team_list[:target_index] + team_list[target_index + 1:target_index + 1 + num_down]
-            elif target_index + num_down >= len(team_list):
-                nearest_teams = team_list[target_index - num_up:target_index] + team_list[target_index + 1:]
-
-            return nearest_teams
-
         # Highlight chosen team name in red if any
         if chosen_team_name in dendo_names:
             ax = plt.gca()
@@ -171,6 +177,14 @@ def dendrogram_plot():
                     label.set_fontweight('bold')
             nearest_teams = find_nearest_teams(team_names, chosen_team_name, 2, 2)
             plt.suptitle(f'The nearest teams to {chosen_team_name} are: {nearest_teams}', fontsize=12)
+
+        elif filtered_names is not None:
+            ax = plt.gca()
+            x_labels = ax.get_xmajorticklabels()
+            for label in x_labels:
+                if label.get_text() in filtered_names:
+                    label.set_color('red')
+                    label.set_fontweight('bold')
 
 
         # Beautify the dendrogram
@@ -198,9 +212,9 @@ def dendrogram_plot():
 
         for i, team_name in enumerate(dendo_names):
             plt.annotate(team_name, (reduced_data[i, 0], reduced_data[i, 1]), fontsize=7, alpha=0.75)
-            if team_name == chosen_team_name:
-                plt.scatter(reduced_data[i, 0], reduced_data[i, 1], color='orange', s=200, edgecolor='black',
-                            label=chosen_team_name)
+            if team_name == chosen_team_name or team_name in filtered_names:
+                #plt.scatter(reduced_data[i, 0], reduced_data[i, 1], color='orange', s=200, edgecolor='black',
+                #            label=chosen_team_name)
                 plt.annotate(team_name, (reduced_data[i, 0], reduced_data[i, 1]), fontsize=7, color='red', alpha=0.9)
 
         plt.title('K-means Clustering with PCA-Reduced Data', fontsize=15)
@@ -215,6 +229,57 @@ def dendrogram_plot():
     except Exception as e:
         print(f"Error generating dendrogram and scatter plot: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/generate_bar_plots', methods=['POST'])
+def generate_bar_plots():
+    try:
+        data = request.get_json()
+        chosen_team_name = data.get('team', '')
+        feature = data.get('feature', '')
+        poss_type = data.get('poss_type', '')
+
+        if 'in_poss' in poss_type:
+            in_poss_stats, in_poss_labels = plot_generation_helper(folders_dict, 'in_poss_stats_per_cluster.csv', chosen_team_name)
+            trans_in_poss_stats, trans_in_poss_labels = plot_generation_helper(folders_dict, 'trans_in_poss_stats_per_cluster.csv', chosen_team_name)
+
+            plt.figure(figsize=(12, 6))
+            ax = plt.subplot(121)
+            sns.barplot(x=in_poss_labels, y=in_poss_stats[feature], ax=ax)
+            ax.set_title(f'{feature}')
+            ax.set_xticklabels(in_poss_labels, rotation=45, ha='right')
+
+            ax = plt.subplot(122)
+            sns.barplot(x=trans_in_poss_labels, y=trans_in_poss_stats[feature], ax=ax)
+            ax.set_title(f'{feature} (In Transition)')
+            ax.set_xticklabels(trans_in_poss_labels, rotation=45, ha='right')
+
+            plt.savefig(f"static/images/{feature}_in_poss_bar_plot.png", bbox_inches='tight')
+            plt.close()
+
+        if 'out_of_poss' in poss_type:
+            out_of_poss_stats, out_of_poss_labels = plot_generation_helper(folders_dict, 'out_of_poss_stats_per_cluster.csv', chosen_team_name)
+            trans_out_of_poss_stats, trans_out_of_poss_labels = plot_generation_helper(folders_dict, 'trans_out_of_poss_stats_per_cluster.csv', chosen_team_name)
+
+            plt.figure(figsize=(15, 10))
+            ax = plt.subplot(121)
+            sns.barplot(x=out_of_poss_labels, y=out_of_poss_stats[feature], ax=ax)
+            ax.set_title(f'{feature}')
+            ax.set_xticklabels(out_of_poss_labels, rotation=45, ha='right')
+
+            ax = plt.subplot(122)
+            sns.barplot(x=trans_out_of_poss_labels, y=trans_out_of_poss_stats[feature], ax=ax)
+            ax.set_title(f'{feature} (In Transition)')
+            ax.set_xticklabels(trans_out_of_poss_labels, rotation=45, ha='right')
+
+            plt.savefig(f"static/images/{feature}_out_of_poss_bar_plot.png", bbox_inches='tight')
+            plt.close()
+
+        return jsonify({"status": "success", "feature": feature, "poss_type": poss_type}), 200
+    except Exception as e:
+        print(f"Error generating bar plots: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
