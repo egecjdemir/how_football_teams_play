@@ -15,7 +15,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
-from helpers import plot_generation_helper, find_nearest_teams
+import ast
+
+from helpers import plot_generation_helper, find_nearest_teams, stack_plot_df_create, stack_plotter
 
 main_directory = 'data4flask'
 
@@ -74,16 +76,88 @@ def options():
 
 @app.route('/recommend_playing_style', methods=['POST'])
 def recommend_playing_style():
-    team = request.form.get('team')
-    league = request.form.get('league')
-    # Add logic to recommend playing style
-    return render_template('recommend_playing_style.html', team=team, league=league)
+    try:
+        team = request.form.get('team')
+        league = request.form.get('league')
+
+        t0 = time.time()
+
+        # Plot Outcome Matrix
+        sns.set(style="whitegrid")
+        pivot_data = folders_dict["outcome_percentages"]["final_outcome_matrix.csv"].pivot_table(index=['BKMeans_Labels', 'Opponent_Cluster'], values=['Draw', 'Lose', 'Win'])
+
+        fig, ax = plt.subplots(figsize=(12, 8))
+        pivot_data.plot(kind='bar', stacked=False, ax=ax)
+        ax.set_title('Outcome Probabilities for Each Cluster Against Each Other')
+        ax.set_xlabel('(Cluster, Opponent_Cluster)')
+        ax.set_ylabel('Probability (%)')
+        plt.xticks(rotation=45)
+        plt.legend(title='Outcome')
+        plt.tight_layout()
+        plt.savefig("static/images/outcome_matrix.png")
+        plt.close()
+
+        # Plot Outcome Percentages with Annotations
+        fig, ax = plt.subplots(figsize=(10, 6))
+        folders_dict["outcome_percentages"]["final_outcome_percentages.csv"].set_index('BKMeans_Labels')[['Draw', 'Lose', 'Win']].plot(kind='bar', stacked=True, ax=ax)
+
+        for n, x in enumerate([p.get_x() + p.get_width() / 2 for p in ax.patches]):
+            height = sum([p.get_height() for p in ax.patches[n::3]])
+            for i, p in enumerate(ax.patches[n::3]):
+                y = p.get_y() + p.get_height() / 2
+                value = int(p.get_height())
+                if value != 0:
+                    ax.text(x, y, f'{value}%', ha='center', va='center')
+
+        ax.set_title('Outcome Probabilities')
+        ax.set_xlabel('Clusters')
+        ax.set_ylabel('Probability (%)')
+        plt.xticks(rotation=0)
+        plt.legend(title='Outcome')
+        plt.tight_layout()
+        plt.savefig("static/images/outcome_percentages.png")
+        plt.close()
+
+        # Reshape the data for heatmap
+        pivot_draw = folders_dict["outcome_percentages"]["final_outcome_matrix.csv"].pivot("BKMeans_Labels", "Opponent_Cluster", "Draw")
+        pivot_win = folders_dict["outcome_percentages"]["final_outcome_matrix.csv"].pivot("BKMeans_Labels", "Opponent_Cluster", "Win")
+
+        # Draw heatmaps with correct function call for layout adjustment
+        fig, axes = plt.subplots(2, 1, figsize=(12, 18), sharex=True, sharey=True)
+
+        sns.heatmap(pivot_draw, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[0])
+        axes[0].set_title('Probability of Draw')
+        axes[0].set_ylabel("Cluster")
+
+        sns.heatmap(pivot_win, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[1])
+        axes[1].set_title('Probability of Win')
+        axes[1].set_ylabel("Cluster")
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.savefig("static/images/outcome_heatmap.png")
+        plt.close()
+
+        t1 = time.time()
+        print(f"recommend time: {(t1 - t0)}")
+
+        return render_template('recommend_playing_style.html', team=team, league=league)
+    except Exception as e:
+        print(f"Error generating playing style recommendations: {e}")
+        return render_template('error.html', message="An error occurred while processing your request.")
+
+
 
 @app.route('/compare_cluster_statistics', methods=['GET', 'POST'])
 def compare_cluster_statistics():
+    t0 = time.time()
     if request.method == 'POST':
         team = request.form.get('team')
         league = request.form.get('league')
+
+        if len(str(team)) < 1:
+            print("wpeıfjpwıefjwpıwpfejwıejfowjeofwjke")
+            team = None
 
         in_poss_stats = folders_dict["stats_per_cluster"]["in_poss_stats_per_cluster.csv"]
         out_of_poss_stats = folders_dict["stats_per_cluster"]["out_of_poss_stats_per_cluster.csv"]
@@ -94,9 +168,12 @@ def compare_cluster_statistics():
         out_of_poss_mean = out_of_poss_stats[[col for col in out_of_poss_stats.columns if 'mean' in col or col == 'teamId']]
         out_of_poss_mean.columns = out_of_poss_mean.columns.str.replace('_mean', '')
 
+        t1 = time.time()
+        print(f"cluster_stats time: {(t1 - t0)}")
         return render_template('compare_cluster_statistics.html', team=team, league=league, in_poss_features=in_poss_mean.columns, out_of_poss_features=out_of_poss_mean.columns)
     if request.method == 'GET':
         return redirect(url_for('welcome'))
+
 
 
 @app.route('/visualize_clustering', methods=['POST'])
@@ -108,12 +185,55 @@ def visualize_clustering():
     return render_template('visualize_clustering.html', team=team, league=league)
 
 
-@app.route('/check_cluster_probabilities', methods=['POST'])
+@app.route('/check_cluster_probabilities', methods=['GET', 'POST'])
 def check_cluster_probabilities():
-    team = request.form.get('team')
-    league = request.form.get('league')
-    # Add logic to check cluster probabilities
-    return render_template('check_cluster_probabilities.html', team=team, league=league)
+    t0 = time.time()
+    in_poss_df = folders_dict["cluster_probs"]["in_poss_cluster_probs.csv"]
+    out_of_poss_df = folders_dict["cluster_probs"]["out_of_poss_cluster_probs.csv"]
+    trans_out_of_poss_df = folders_dict["cluster_probs"]["trans_out_of_poss_cluster_probs.csv"]
+    trans_poss_df = folders_dict["cluster_probs"]["trans_poss_cluster_probs.csv"]
+
+    if request.method == 'POST':
+        try:
+            team = request.form.get('team')
+            league = request.form.get('league')
+            cluster_prob_file = request.form.get('cluster_prob_file')
+
+            cluster_probs_df = in_poss_df
+            if cluster_prob_file == "out_of_poss_cluster_probs.csv":
+                cluster_probs_df = out_of_poss_df
+            elif cluster_prob_file == "trans_out_of_poss_cluster_probs.csv":
+                cluster_probs_df = trans_out_of_poss_df
+            elif cluster_prob_file == "trans_poss_cluster_probs.csv":
+                cluster_probs_df = trans_poss_df
+
+            cluster_probs_df = cluster_probs_df.merge(folders_dict["teams_df"]["teams_df.csv"], left_on='teamId', right_on='wyId')
+            teams_list = cluster_probs_df["name"].tolist()
+
+            d = {'Premier League': 'England', 'Bundesliga': 'Germany', 'Serie A': 'Italy', 'Ligue 1': 'France',
+                 'La Liga': 'Spain'}
+            chosen_country = None
+            if league in d:
+                chosen_country = d[league]
+
+            if chosen_country:
+                df = cluster_probs_df.merge(folders_dict["teams_df"]["teams_df.csv"], left_on='teamId', right_on='wyId')
+                df['area_x'] = df['area_x'].apply(ast.literal_eval)
+                cluster_probs_df = df[df['area_x'].apply(lambda x: x['name'] == chosen_country)]
+                teams_list = cluster_probs_df["name_x"].tolist()
+
+            t1 = time.time()
+            print(f"cluster prob time: {(t1 - t0)}")
+
+            return render_template('check_cluster_probabilities.html', team=team, league=league, teams_list=teams_list, cluster_probs_df=cluster_probs_df)
+        except Exception as e:
+            return render_template('error.html', message="An error occurred while processing your request.")
+
+    if request.method == 'GET':
+        return redirect(url_for('welcome'))
+
+
+
 
 
 @app.route('/plots', methods=['GET', 'POST'])
@@ -130,6 +250,7 @@ def plots():
 @app.route('/dendrogram', methods=['POST'])
 def dendrogram_plot():
     try:
+        t0 = time.time()
         data = request.get_json()
         chosen_league_name = data.get('league', '')
         chosen_team_name = data.get('team', '')
@@ -156,7 +277,7 @@ def dendrogram_plot():
 
         # Generate the linkage matrix
         linkage_matrix = linkage(dendo_df, method='ward')
-
+        t5 = time.time()
         # Create the dendrogram
         plt.figure(figsize=(15, 10))
         dendro = dendrogram(
@@ -196,6 +317,8 @@ def dendrogram_plot():
         plt.savefig("static/images/dendro.png", bbox_inches='tight')
         plt.close()
 
+        t1 = time.time()
+        print(f"dendrogram time: {(t1 - t5)}")
         # Generate the scatter plot
         scaler = StandardScaler()
         scaled_data = scaler.fit_transform(dendo_df)
@@ -206,6 +329,7 @@ def dendrogram_plot():
 
         pca = PCA(n_components=2)
         reduced_data = pca.fit_transform(scaled_data)
+
 
         plt.figure(figsize=(15, 10))
         plt.scatter(reduced_data[:, 0], reduced_data[:, 1], c=kmeans_labels, s=50, cmap='jet')
@@ -224,6 +348,9 @@ def dendrogram_plot():
         plt.savefig("static/images/scatter.png", bbox_inches='tight')
         plt.close()
 
+        t3 = time.time()
+        print(f"scatter time: {(t3 - t1)}")
+
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
@@ -234,10 +361,16 @@ def dendrogram_plot():
 def generate_bar_plots():
     try:
         data = request.get_json()
-        chosen_team_name = data.get('team', '')
         chosen_league_name = data.get('league', '')
+        chosen_team_name = data.get('team', '')
         feature = data.get('feature', '')
         poss_type = data.get('poss_type', '')
+
+        if chosen_team_name != None:
+            print("q3pıfjqıopwrfj0qğeı")
+
+        print(f"Received request for team: {chosen_team_name}, league: {chosen_league_name}, feature: {feature}, poss_type: {poss_type}")
+
 
         if 'in_poss' in poss_type:
             in_poss_stats, in_poss_labels = plot_generation_helper(folders_dict, 'in_poss_stats_per_cluster.csv', chosen_team_name, chosen_league_name)
@@ -258,8 +391,11 @@ def generate_bar_plots():
             plt.close()
 
         if 'out_of_poss' in poss_type:
-            out_of_poss_stats, out_of_poss_labels = plot_generation_helper(folders_dict, 'out_of_poss_stats_per_cluster.csv', chosen_team_name)
-            trans_out_of_poss_stats, trans_out_of_poss_labels = plot_generation_helper(folders_dict, 'trans_out_of_poss_stats_per_cluster.csv', chosen_team_name)
+            out_of_poss_stats, out_of_poss_labels = plot_generation_helper(folders_dict, 'out_of_poss_stats_per_cluster.csv', chosen_team_name, chosen_league_name)
+            trans_out_of_poss_stats, trans_out_of_poss_labels = plot_generation_helper(folders_dict, 'trans_out_of_poss_stats_per_cluster.csv', chosen_team_name, chosen_league_name)
+
+            print(f"out_of_poss_stats columns: {out_of_poss_stats.columns}")
+            print(f"trans_out_of_poss_stats columns: {trans_out_of_poss_stats.columns}")
 
             plt.figure(figsize=(15, 10))
             ax = plt.subplot(121)
@@ -278,6 +414,26 @@ def generate_bar_plots():
         return jsonify({"status": "success", "feature": feature, "poss_type": poss_type}), 200
     except Exception as e:
         print(f"Error generating bar plots: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/generate_cluster_prob_plots', methods=['POST'])
+def generate_cluster_prob_plots():
+    try:
+        data = request.get_json()
+        chosen_team_name = data.get('team', 'None')
+        chosen_league_name = data.get('league', 'None')
+        cluster_prob_file = data.get('cluster_prob_file')
+
+        df, labels, league_df, league_labels = stack_plot_df_create(folders_dict, cluster_prob_file, chosen_league_name)
+
+        stack_plotter(df, labels, "Cluster Probabilities", 'static/images/all_teams_prob_plot.png')
+        if league_df:
+            stack_plotter(league_df, league_labels , f"Cluster Probabilities - {cluster_prob_file}", 'static/images/league_teams_prob_plot.png')
+
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        print(f"Error generating cluster probability plots: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
