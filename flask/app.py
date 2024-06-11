@@ -74,78 +74,124 @@ def options():
     league = request.form.get('league')
     return render_template('options.html', team=team, league=league)
 
+
 @app.route('/recommend_playing_style', methods=['POST'])
 def recommend_playing_style():
     try:
         team = request.form.get('team')
         league = request.form.get('league')
 
+        # Load the teams DataFrame
+        teams_df = folders_dict["teams_df"]["teams_df.csv"]
+
+        # Get the team ID
+        team_id = None
+        if team:
+            team_id = teams_df.loc[teams_df['name'] == team, 'wyId'].values[0]
+
+        # Helper function to get the highest probability cluster
+        def get_highest_prob_cluster(probs_df, team_id):
+            team_probs = probs_df[probs_df['teamId'] == team_id]
+            if not team_probs.empty:
+                team_probs = team_probs.drop(columns=['teamId', 'Unnamed: 0'])
+                max_prob_cluster = team_probs.idxmax(axis=1).values[0]
+                return max_prob_cluster
+            return None
+
+        # Load cluster probabilities DataFrames
+        in_poss_probs = folders_dict["cluster_probs"]["in_poss_cluster_probs.csv"]
+        out_of_poss_probs = folders_dict["cluster_probs"]["out_of_poss_cluster_probs.csv"]
+        trans_in_poss_probs = folders_dict["cluster_probs"]["trans_poss_cluster_probs.csv"]
+        trans_out_of_poss_probs = folders_dict["cluster_probs"]["trans_out_of_poss_cluster_probs.csv"]
+
+        # Get highest probability clusters for each phase
+        in_poss_cluster = get_highest_prob_cluster(in_poss_probs, team_id)
+        out_of_poss_cluster = get_highest_prob_cluster(out_of_poss_probs, team_id)
+        trans_in_poss_cluster = get_highest_prob_cluster(trans_in_poss_probs, team_id)
+        trans_out_of_poss_cluster = get_highest_prob_cluster(trans_out_of_poss_probs, team_id)
+
+        # Generate the plots
         t0 = time.time()
 
-        # Plot Outcome Matrix
-        sns.set(style="whitegrid")
-        pivot_data = folders_dict["outcome_percentages"]["final_outcome_matrix.csv"].pivot_table(index=['BKMeans_Labels', 'Opponent_Cluster'], values=['Draw', 'Lose', 'Win'])
+        datasets = ['final', 'in_poss', 'out_of_poss', 'trans_in_poss', 'trans_out_of_poss']
+        for dataset in datasets:
+            outcome_matrix_path = f"{dataset}_outcome_matrix.csv"
+            outcome_percentages_path = f"{dataset}_outcome_percentages.csv"
 
-        fig, ax = plt.subplots(figsize=(12, 8))
-        pivot_data.plot(kind='bar', stacked=False, ax=ax)
-        ax.set_title('Outcome Probabilities for Each Cluster Against Each Other')
-        ax.set_xlabel('(Cluster, Opponent_Cluster)')
-        ax.set_ylabel('Probability (%)')
-        plt.xticks(rotation=45)
-        plt.legend(title='Outcome')
-        plt.tight_layout()
-        plt.savefig("static/images/outcome_matrix.png")
-        plt.close()
+            if outcome_matrix_path in folders_dict["outcome_percentages"] and outcome_percentages_path in folders_dict[
+                "outcome_percentages"]:
+                label = 'BKMeans_Labels' if dataset == 'final' else 'KMeans_Labels'
 
-        # Plot Outcome Percentages with Annotations
-        fig, ax = plt.subplots(figsize=(10, 6))
-        folders_dict["outcome_percentages"]["final_outcome_percentages.csv"].set_index('BKMeans_Labels')[['Draw', 'Lose', 'Win']].plot(kind='bar', stacked=True, ax=ax)
+                # Plot Outcome Matrix
+                sns.set(style="whitegrid")
+                pivot_data = folders_dict["outcome_percentages"][outcome_matrix_path].pivot_table(
+                    index=[label, 'Opponent_Cluster'], values=['Draw', 'Lose', 'Win'])
 
-        for n, x in enumerate([p.get_x() + p.get_width() / 2 for p in ax.patches]):
-            height = sum([p.get_height() for p in ax.patches[n::3]])
-            for i, p in enumerate(ax.patches[n::3]):
-                y = p.get_y() + p.get_height() / 2
-                value = int(p.get_height())
-                if value != 0:
-                    ax.text(x, y, f'{value}%', ha='center', va='center')
+                fig, ax = plt.subplots(figsize=(12, 8))
+                pivot_data.plot(kind='bar', stacked=False, ax=ax)
+                ax.set_title(f'Outcome Probabilities for Each Cluster Against Each Other ({dataset})')
+                ax.set_xlabel(f'({label}, Opponent_Cluster)')
+                ax.set_ylabel('Probability (%)')
+                plt.xticks(rotation=45)
+                plt.legend(title='Outcome')
+                plt.tight_layout()
+                plt.savefig(f"static/images/{dataset}_outcome_matrix.png")
+                plt.close()
 
-        ax.set_title('Outcome Probabilities')
-        ax.set_xlabel('Clusters')
-        ax.set_ylabel('Probability (%)')
-        plt.xticks(rotation=0)
-        plt.legend(title='Outcome')
-        plt.tight_layout()
-        plt.savefig("static/images/outcome_percentages.png")
-        plt.close()
+                # Plot Outcome Percentages with Annotations
+                fig, ax = plt.subplots(figsize=(10, 6))
+                folders_dict["outcome_percentages"][outcome_percentages_path].set_index(label)[
+                    ['Draw', 'Lose', 'Win']].plot(kind='bar', stacked=True, ax=ax)
 
-        # Reshape the data for heatmap
-        pivot_draw = folders_dict["outcome_percentages"]["final_outcome_matrix.csv"].pivot("BKMeans_Labels", "Opponent_Cluster", "Draw")
-        pivot_win = folders_dict["outcome_percentages"]["final_outcome_matrix.csv"].pivot("BKMeans_Labels", "Opponent_Cluster", "Win")
+                for n, x in enumerate([p.get_x() + p.get_width() / 2 for p in ax.patches]):
+                    height = sum([p.get_height() for p in ax.patches[n::3]])
+                    for i, p in enumerate(ax.patches[n::3]):
+                        y = p.get_y() + p.get_height() / 2
+                        value = int(p.get_height())
+                        if value != 0:
+                            ax.text(x, y, f'{value}%', ha='center', va='center')
 
-        # Draw heatmaps with correct function call for layout adjustment
-        fig, axes = plt.subplots(2, 1, figsize=(12, 18), sharex=True, sharey=True)
+                ax.set_title(f'Outcome Probabilities ({dataset})')
+                ax.set_xlabel('Clusters')
+                ax.set_ylabel('Probability (%)')
+                plt.xticks(rotation=0)
+                plt.legend(title='Outcome')
+                plt.tight_layout()
+                plt.savefig(f"static/images/{dataset}_outcome_percentages.png")
+                plt.close()
 
-        sns.heatmap(pivot_draw, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[0])
-        axes[0].set_title('Probability of Draw', fontsize=14)
-        axes[0].set_ylabel("Cluster")
+                # Reshape the data for heatmap
+                pivot_draw = folders_dict["outcome_percentages"][outcome_matrix_path].pivot(label, "Opponent_Cluster",
+                                                                                            "Draw")
+                pivot_win = folders_dict["outcome_percentages"][outcome_matrix_path].pivot(label, "Opponent_Cluster",
+                                                                                           "Win")
 
-        sns.heatmap(pivot_win, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[1])
-        axes[1].set_title('Probability of Win', fontsize=14)
-        axes[1].set_ylabel("Cluster")
+                # Draw heatmaps with correct function call for layout adjustment
+                fig, axes = plt.subplots(2, 1, figsize=(12, 18), sharex=True, sharey=True)
 
-        # Adjust layout
-        plt.tight_layout()
-        plt.savefig("static/images/outcome_heatmap.png")
-        plt.close()
+                sns.heatmap(pivot_draw, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[0])
+                axes[0].set_title(f'Probability of Draw ({dataset})', fontsize=14)
+                axes[0].set_ylabel("Cluster")
+
+                sns.heatmap(pivot_win, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[1])
+                axes[1].set_title(f'Probability of Win ({dataset})', fontsize=14)
+                axes[1].set_ylabel("Cluster")
+
+                plt.tight_layout()
+                plt.savefig(f"static/images/{dataset}_outcome_heatmap.png")
+                plt.close()
 
         t1 = time.time()
         print(f"recommend time: {(t1 - t0)}")
 
-        return render_template('recommend_playing_style.html', team=team, league=league)
+        return render_template('recommend_playing_style.html', team=team, league=league,
+                               in_poss_cluster=in_poss_cluster, out_of_poss_cluster=out_of_poss_cluster,
+                               trans_in_poss_cluster=trans_in_poss_cluster,
+                               trans_out_of_poss_cluster=trans_out_of_poss_cluster,
+                               datasets=datasets)
     except Exception as e:
         print(f"Error generating playing style recommendations: {e}")
         return render_template('error.html', message="An error occurred while processing your request.")
-
 
 
 @app.route('/compare_cluster_statistics', methods=['GET', 'POST'])
