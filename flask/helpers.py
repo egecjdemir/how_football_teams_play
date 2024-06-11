@@ -84,7 +84,7 @@ def plot_generation_helper(folders_dict, filename, chosen_team_name=None, chosen
     if len(str(chosen_team_name)) < 1:
         labels += [chosen_team_name]
     else:
-        labels += [chosen_league_name + " avg"]
+        labels += ["Team or League average"]
 
     print(f"labels: {labels}")
 
