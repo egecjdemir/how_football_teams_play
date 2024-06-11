@@ -126,11 +126,11 @@ def recommend_playing_style():
         fig, axes = plt.subplots(2, 1, figsize=(12, 18), sharex=True, sharey=True)
 
         sns.heatmap(pivot_draw, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[0])
-        axes[0].set_title('Probability of Draw')
+        axes[0].set_title('Probability of Draw', fontsize=14)
         axes[0].set_ylabel("Cluster")
 
         sns.heatmap(pivot_win, cmap="coolwarm", annot=True, fmt=".1f", ax=axes[1])
-        axes[1].set_title('Probability of Win')
+        axes[1].set_title('Probability of Win', fontsize=14)
         axes[1].set_ylabel("Cluster")
 
         # Adjust layout

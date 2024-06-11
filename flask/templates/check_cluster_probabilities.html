@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Visualize Clustering</title>
+    <title>Check Cluster Probabilities</title>
     <script>
-        function disableButton(buttonId) {
-            var button = document.getElementById(buttonId);
-            button.disabled = true;
+        function generateClusterProbPlots() {
+            var team = document.getElementById('team').value;
+            var league = document.getElementById('league').value;
+            var clusterProbFile = document.getElementById('cluster_prob_file').value;
+
+            fetch('/generate_cluster_prob_plots', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ team: team, league: league, cluster_prob_file: clusterProbFile })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    disableButton('generatePlotsBtn');
+                    document.getElementById('toggleAllTeamsBtn').disabled = false;
+                    document.getElementById('toggleLeagueTeamsBtn').disabled = false;
+                    if (team) {
+                        document.getElementById('togglePieChartBtn').disabled = false;
+                    }
+                    alert('Cluster probability plots generated successfully!');
+                } else {
+                    alert('Error generating cluster probability plots: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error generating cluster probability plots:', error));
         }
 
         function toggleImage(imgId) {
@@ -17,66 +41,61 @@
             }
         }
 
-        function generateDendrogram() {
-            fetch('/dendrogram', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ team: "{{ team }}" })
-            })
-            .then(response => {
-                if (response.status === 204) {
-                    disableButton('generateDendroBtn');
-                    document.getElementById('toggleDendroBtn').disabled = false;
-                    alert('Dendrogram generated successfully!');
-                }
-            });
+        function disableButton(buttonId) {
+            var button = document.getElementById(buttonId);
+            button.disabled = true;
         }
 
-        function toggleDendrogram() {
-            var img = document.getElementById('dendrogram');
+        function toggleAllTeamsPlot() {
+            var img = document.getElementById('allTeamsPlot');
             if (!img.src || img.src.endsWith('#')) {
-                img.src = "/static/images/dendro.png?" + new Date().getTime(); // Force refresh
+                img.src = "/static/images/all_teams_prob_plot.png?" + new Date().getTime(); // Force refresh
             }
-            toggleImage('dendrogram');
+            toggleImage('allTeamsPlot');
         }
 
-        function generateScatterPlot() {
-            fetch('/scatter_plot', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ team: "{{ team }}" })
-            })
-            .then(response => {
-                if (response.status === 204) {
-                    disableButton('generateScatterBtn');
-                    document.getElementById('toggleScatterBtn').disabled = false;
-                    alert('Scatter plot generated successfully!');
-                }
-            });
-        }
-
-        function toggleScatterPlot() {
-            var img = document.getElementById('scatterPlot');
+        function toggleLeagueTeamsPlot() {
+            var img = document.getElementById('leagueTeamsPlot');
             if (!img.src || img.src.endsWith('#')) {
-                img.src = "/static/images/scatter.png?" + new Date().getTime(); // Force refresh
+                img.src = "/static/images/league_teams_prob_plot.png?" + new Date().getTime(); // Force refresh
             }
-            toggleImage('scatterPlot');
+            toggleImage('leagueTeamsPlot');
+        }
+
+        function togglePieChart() {
+            var img = document.getElementById('pieChart');
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = "/static/images/pie_chart.png?" + new Date().getTime(); // Force refresh
+            }
+            toggleImage('pieChart');
         }
     </script>
 </head>
 <body>
-    <h1>Visualize Clustering for {{ league or team }}</h1>
-    <button id="generateDendroBtn" onclick="generateDendrogram()">Generate Dendrogram</button>
-    <button id="toggleDendroBtn" onclick="toggleDendrogram()" disabled>Toggle Dendrogram</button>
-    <img id="dendrogram" src="#" alt="Dendrogram" style="display:none;">
+    <h1>Check Cluster Probabilities for {{ team if team else league }}</h1>
+    <input type="hidden" id="team" value="{{ team }}">
+    <input type="hidden" id="league" value="{{ league }}">
 
-    <button id="generateScatterBtn" onclick="generateScatterPlot()">Generate Scatter Plot</button>
-    <button id="toggleScatterBtn" onclick="toggleScatterPlot()" disabled>Toggle Scatter Plot</button>
-    <img id="scatterPlot" src="#" alt="Scatter Plot" style="display:none;">
+    <label for="cluster_prob_file">Select Cluster Probability File:</label>
+    <select id="cluster_prob_file" name="cluster_prob_file">
+        <option value="in_poss_cluster_probs.csv">In Possession</option>
+        <option value="out_of_poss_cluster_probs.csv">Out of Possession</option>
+        <option value="trans_out_of_poss_cluster_probs.csv">Transition Out of Possession</option>
+        <option value="trans_poss_cluster_probs.csv">Transition Possession</option>
+    </select>
+    
+
+    <button id="generatePlotsBtn" onclick="generateClusterProbPlots()">Generate Cluster Probability Plots</button>
+    <button id="toggleAllTeamsBtn" onclick="toggleAllTeamsPlot()" disabled>Toggle All Teams Probability Plot</button>
+    <img id="allTeamsPlot" src="#" alt="All Teams Probability Plot" style="display:none;">
+
+    <button id="toggleLeagueTeamsBtn" onclick="toggleLeagueTeamsPlot()" disabled>Toggle League Teams Probability Plot</button>
+    <img id="leagueTeamsPlot" src="#" alt="League Teams Probability Plot" style="display:none;">
+
+    {% if team %}
+    <button id="togglePieChartBtn" onclick="togglePieChart()" disabled>Toggle Pie Chart</button>
+    <img id="pieChart" src="#" alt="Pie Chart" style="display:none;">
+    {% endif %}
 
     <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
 </body>

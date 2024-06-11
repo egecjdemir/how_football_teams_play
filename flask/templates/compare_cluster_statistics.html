@@ -5,6 +5,7 @@
     <script>
         function generateBarPlots() {
             var team = document.getElementById('team').value;
+            var league = document.getElementById('league').value;
             var possType = document.querySelector('input[name="poss_type"]:checked').value;
             var feature;
             if (possType === 'in_poss') {
@@ -18,7 +19,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ team: team, feature: feature, poss_type: possType })
+                body: JSON.stringify({ team: team, league: league, feature: feature, poss_type: possType })
             })
             .then(response => response.json())
             .then(data => {
@@ -73,7 +74,8 @@
 <body>
     <h1>Compare Cluster Statistics for {{ team if team else league }}</h1>
     <input type="hidden" id="team" value="{{ team }}">
-    
+    <input type="hidden" id="league" value="{{ league }}">
+
     <p>Select Possession Type:</p>
     <input type="radio" id="in_poss" name="poss_type" value="in_poss" onclick="updateFeatureOptions()">
     <label for="in_poss">In Possession</label><br>
