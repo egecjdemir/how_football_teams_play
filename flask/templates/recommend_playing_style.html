@@ -12,46 +12,37 @@
             }
         }
 
-        function disableButton(buttonId) {
-            var button = document.getElementById(buttonId);
-            button.disabled = true;
-        }
-
-        function toggleOutcomeMatrix() {
-            var img = document.getElementById('outcomeMatrix');
+        function toggleDatasetImage(dataset, plotType) {
+            var imgId = `${dataset}_${plotType}`;
+            var img = document.getElementById(imgId);
             if (!img.src || img.src.endsWith('#')) {
-                img.src = "/static/images/outcome_matrix.png?" + new Date().getTime(); // Force refresh
+                img.src = `/static/images/${dataset}_${plotType}.png?` + new Date().getTime(); // Force refresh
             }
-            toggleImage('outcomeMatrix');
-        }
-
-        function toggleOutcomePercentages() {
-            var img = document.getElementById('outcomePercentages');
-            if (!img.src || img.src.endsWith('#')) {
-                img.src = "/static/images/outcome_percentages.png?" + new Date().getTime(); // Force refresh
-            }
-            toggleImage('outcomePercentages');
-        }
-
-        function toggleOutcomeHeatmap() {
-            var img = document.getElementById('outcomeHeatmap');
-            if (!img.src || img.src.endsWith('#')) {
-                img.src = "/static/images/outcome_heatmap.png?" + new Date().getTime(); // Force refresh
-            }
-            toggleImage('outcomeHeatmap');
+            toggleImage(imgId);
         }
     </script>
 </head>
 <body>
     <h1>Recommend Playing Style for {{ team if team else league }}</h1>
-    <button id="toggleOutcomeMatrixBtn" onclick="toggleOutcomeMatrix()">Toggle Outcome Matrix</button>
-    <img id="outcomeMatrix" src="#" alt="Outcome Matrix" style="display:none;">
 
-    <button id="toggleOutcomePercentagesBtn" onclick="toggleOutcomePercentages()">Toggle Outcome Percentages</button>
-    <img id="outcomePercentages" src="#" alt="Outcome Percentages" style="display:none;">
+    <h2>Ultimate Clusters for {{ team }}</h2>
+    <p>In Possession: {{ in_poss_cluster }}</p>
+    <p>Out of Possession: {{ out_of_poss_cluster }}</p>
+    <p>In Transition Possession: {{ trans_in_poss_cluster }}</p>
+    <p>In Transition Out of Possession: {{ trans_out_of_poss_cluster }}</p>
 
-    <button id="toggleOutcomeHeatmapBtn" onclick="toggleOutcomeHeatmap()">Toggle Outcome Heatmap</button>
-    <img id="outcomeHeatmap" src="#" alt="Outcome Heatmap" style="display:none;">
+    {% for dataset in datasets %}
+        <h2>{{ dataset.replace('_', ' ').capitalize() }}</h2>
+
+        <button onclick="toggleDatasetImage('{{ dataset }}', 'outcome_matrix')">Toggle Outcome Matrix</button>
+        <img id="{{ dataset }}_outcome_matrix" src="#" alt="Outcome Matrix" style="display:none;">
+
+        <button onclick="toggleDatasetImage('{{ dataset }}', 'outcome_percentages')">Toggle Outcome Percentages</button>
+        <img id="{{ dataset }}_outcome_percentages" src="#" alt="Outcome Percentages" style="display:none;">
+
+        <button onclick="toggleDatasetImage('{{ dataset }}', 'outcome_heatmap')">Toggle Outcome Heatmap</button>
+        <img id="{{ dataset }}_outcome_heatmap" src="#" alt="Outcome Heatmap" style="display:none;">
+    {% endfor %}
 
     <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
 </body>
