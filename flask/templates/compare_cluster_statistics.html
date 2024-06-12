@@ -72,7 +72,7 @@
     </script>
 </head>
 <body>
-    <h1>Compare Cluster Statistics for {{ team if team else league }}</h1>
+    <h1>Compare Cluster Statistics for {{ team if team != "None" else league }}</h1>
     <input type="hidden" id="team" value="{{ team }}">
     <input type="hidden" id="league" value="{{ league }}">
 

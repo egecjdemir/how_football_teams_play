@@ -57,7 +57,7 @@
     </script>
 </head>
 <body>
-    <h1>Visualize Clustering for {{ team if team else league }}</h1>
+    <h1>Visualize Clustering for {{ team if team != "None" else league }}</h1>
     <button id="generatePlotsBtn" onclick="generatePlots()">Generate Plots</button>
     <button id="toggleDendroBtn" onclick="toggleDendrogram()" disabled>Toggle Dendrogram</button>
     <img id="dendrogram" src="#" alt="Dendrogram" style="display:none;">

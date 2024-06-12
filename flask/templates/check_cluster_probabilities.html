@@ -72,7 +72,7 @@
     </script>
 </head>
 <body>
-    <h1>Check Cluster Probabilities for {{ team if team else league }}</h1>
+    <h1>Check Cluster Probabilities of All Teams</h1>
     <input type="hidden" id="team" value="{{ team }}">
     <input type="hidden" id="league" value="{{ league }}">
 
@@ -89,13 +89,6 @@
     <button id="toggleAllTeamsBtn" onclick="toggleAllTeamsPlot()" disabled>Toggle All Teams Probability Plot</button>
     <img id="allTeamsPlot" src="#" alt="All Teams Probability Plot" style="display:none;">
 
-    <button id="toggleLeagueTeamsBtn" onclick="toggleLeagueTeamsPlot()" disabled>Toggle League Teams Probability Plot</button>
-    <img id="leagueTeamsPlot" src="#" alt="League Teams Probability Plot" style="display:none;">
-
-    {% if team %}
-    <button id="togglePieChartBtn" onclick="togglePieChart()" disabled>Toggle Pie Chart</button>
-    <img id="pieChart" src="#" alt="Pie Chart" style="display:none;">
-    {% endif %}
 
     <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
 </body>
