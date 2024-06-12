@@ -30,6 +30,8 @@
     <p>Out of Possession: {{ out_of_poss_cluster }}</p>
     <p>In Transition Possession: {{ trans_in_poss_cluster }}</p>
     <p>In Transition Out of Possession: {{ trans_out_of_poss_cluster }}</p>
+    <p></p>
+    <p>View heatmaps below to see the best playing style for each game phase against {{ team if team else league }}.</p>
 
     {% for dataset in datasets %}
         <h2>{{ dataset.replace('_', ' ').capitalize() }}</h2>
