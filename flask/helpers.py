@@ -71,7 +71,7 @@ def generate_recommender_plots(outcome_matrix_path, outcome_percentages_path):
     print(f"recommend time: {(t1 - t0)}")
 
 
-def plot_generation_helper(folders_dict, filename, chosen_team_name=None, chosen_league_name = "league"):
+def plot_generation_helper(folders_dict, filename, chosen_team_name="team", chosen_league_name = "league"):
     stats = folders_dict["stats_per_cluster"][filename].copy()
     stats.rename(columns={'Unnamed: 0': "teamId"}, inplace=True)
 
@@ -81,10 +81,10 @@ def plot_generation_helper(folders_dict, filename, chosen_team_name=None, chosen
 
     cluster_means = stats_mean.iloc[:3]
     labels = list(cluster_means.teamId)
-    if len(str(chosen_team_name)) < 1:
-        labels += [chosen_team_name]
+    if str(chosen_team_name) != "None":
+        labels += [f"{chosen_team_name}"]
     else:
-        labels += ["Team or League average"]
+        labels += [f"{chosen_league_name} average"]
 
     print(f"labels: {labels}")
 

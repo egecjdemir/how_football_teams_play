@@ -89,7 +89,7 @@ def recommend_playing_style():
         if team:
             team_id = teams_df.loc[teams_df['name'] == team, 'wyId'].values[0]
 
-        # Helper function to get the highest probability cluster
+        # Helper function to get the highest probability cluster for a team
         def get_highest_prob_cluster(probs_df, team_id):
             team_probs = probs_df[probs_df['teamId'] == team_id]
             if not team_probs.empty:
@@ -98,17 +98,46 @@ def recommend_playing_style():
                 return max_prob_cluster
             return None
 
+        # Helper function to get the cluster with the most teams for a league
+        def get_most_teams_cluster(probs_df, team_ids):
+            league_probs = probs_df[probs_df['teamId'].isin(team_ids)]
+            if not league_probs.empty:
+                league_probs = league_probs.drop(columns=['teamId', 'Unnamed: 0'])
+                most_teams_cluster = league_probs.idxmax(axis=1).value_counts().idxmax()
+                return most_teams_cluster
+            return None
+
         # Load cluster probabilities DataFrames
         in_poss_probs = folders_dict["cluster_probs"]["in_poss_cluster_probs.csv"]
         out_of_poss_probs = folders_dict["cluster_probs"]["out_of_poss_cluster_probs.csv"]
         trans_in_poss_probs = folders_dict["cluster_probs"]["trans_poss_cluster_probs.csv"]
         trans_out_of_poss_probs = folders_dict["cluster_probs"]["trans_out_of_poss_cluster_probs.csv"]
 
-        # Get highest probability clusters for each phase
-        in_poss_cluster = get_highest_prob_cluster(in_poss_probs, team_id)
-        out_of_poss_cluster = get_highest_prob_cluster(out_of_poss_probs, team_id)
-        trans_in_poss_cluster = get_highest_prob_cluster(trans_in_poss_probs, team_id)
-        trans_out_of_poss_cluster = get_highest_prob_cluster(trans_out_of_poss_probs, team_id)
+        # Determine clusters
+        if team:
+            # Get highest probability clusters for each phase for the chosen team
+            in_poss_cluster = get_highest_prob_cluster(in_poss_probs, team_id)
+            out_of_poss_cluster = get_highest_prob_cluster(out_of_poss_probs, team_id)
+            trans_in_poss_cluster = get_highest_prob_cluster(trans_in_poss_probs, team_id)
+            trans_out_of_poss_cluster = get_highest_prob_cluster(trans_out_of_poss_probs, team_id)
+        elif league:
+            # Determine the country associated with the chosen league
+            d = {'Premier League': 'England', 'Bundesliga': 'Germany', 'Serie A': 'Italy', 'Ligue 1': 'France',
+                 'La Liga': 'Spain'}
+            chosen_country = d.get(league)
+
+            # Get the team names of the teams in the chosen league
+            country_teams_df = folders_dict["teams_df"]["country_of_teams.csv"]
+            league_team_names = country_teams_df[country_teams_df['country'] == chosen_country]['team'].tolist()
+
+            # Match the team names to get the team IDs
+            league_team_ids = teams_df[teams_df['name'].isin(league_team_names)]['wyId'].tolist()
+
+            # Get clusters with the most teams for each phase for the chosen league
+            in_poss_cluster = get_most_teams_cluster(in_poss_probs, league_team_ids)
+            out_of_poss_cluster = get_most_teams_cluster(out_of_poss_probs, league_team_ids)
+            trans_in_poss_cluster = get_most_teams_cluster(trans_in_poss_probs, league_team_ids)
+            trans_out_of_poss_cluster = get_most_teams_cluster(trans_out_of_poss_probs, league_team_ids)
 
         # Generate the plots
         t0 = time.time()
@@ -485,4 +514,5 @@ def generate_cluster_prob_plots():
 
 
 if __name__ == '__main__':
+    print(pd.__version__)
     app.run(debug=True, port=8000)
