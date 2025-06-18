@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Compare Cluster Statistics</title>
+    <script>
+        function generateBarPlots() {
+            var team = document.getElementById('team').value;
+            var league = document.getElementById('league').value;
+            var possType = document.querySelector('input[name="poss_type"]:checked').value;
+            var feature;
+            if (possType === 'in_poss') {
+                feature = document.getElementById('in_poss_features').value;
+            } else {
+                feature = document.getElementById('out_of_poss_features').value;
+            }
+
+            fetch('/generate_bar_plots', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ team: team, league: league, feature: feature, poss_type: possType })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    var toggleBtnId = `toggle${data.feature}_${data.poss_type}Btn`;
+                    document.getElementById(toggleBtnId).disabled = false;
+                    alert('Bar plots generated successfully!');
+                } else {
+                    alert('Error generating bar plots: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error generating bar plots:', error));
+        }
+
+        function toggleBarPlot(feature, possType) {
+            var imgId = feature + '_' + possType + 'BarPlot';
+            var img = document.getElementById(imgId);
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = '/static/images/' + feature + '_' + possType + '_bar_plot.png?' + new Date().getTime(); // Force refresh
+            }
+            toggleImage(imgId);
+        }
+
+        function toggleImage(imgId) {
+            var img = document.getElementById(imgId);
+            if (img.style.display === 'none') {
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+
+        function updateFeatureOptions() {
+            var inPossFeatures = document.getElementById('in_poss_features');
+            var outOfPossFeatures = document.getElementById('out_of_poss_features');
+            var possType = document.querySelector('input[name="poss_type"]:checked').value;
+
+            if (possType === 'in_poss') {
+                inPossFeatures.style.display = 'block';
+                outOfPossFeatures.style.display = 'none';
+                document.getElementById('in_poss_buttons').style.display = 'block';
+                document.getElementById('out_of_poss_buttons').style.display = 'none';
+            } else {
+                inPossFeatures.style.display = 'none';
+                outOfPossFeatures.style.display = 'block';
+                document.getElementById('in_poss_buttons').style.display = 'none';
+                document.getElementById('out_of_poss_buttons').style.display = 'block';
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Compare Cluster Statistics for {{ team if team != "None" else league }}</h1>
+    <input type="hidden" id="team" value="{{ team }}">
+    <input type="hidden" id="league" value="{{ league }}">
+
+    <p>Select Possession Type:</p>
+    <input type="radio" id="in_poss" name="poss_type" value="in_poss" onclick="updateFeatureOptions()">
+    <label for="in_poss">In Possession</label><br>
+    <input type="radio" id="out_of_poss" name="poss_type" value="out_of_poss" onclick="updateFeatureOptions()">
+    <label for="out_of_poss">Out of Possession</label><br>
+
+    <label for="in_poss_features" id="in_poss_label" style="display:none;">Select In Possession Feature:</label>
+    <select id="in_poss_features" style="display:none;">
+        {% for feature in in_poss_features %}
+        <option value="{{ feature }}">{{ feature }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="out_of_poss_features" id="out_of_poss_label" style="display:none;">Select Out of Possession Feature:</label>
+    <select id="out_of_poss_features" style="display:none;">
+        {% for feature in out_of_poss_features %}
+        <option value="{{ feature }}">{{ feature }}</option>
+        {% endfor %}
+    </select>
+
+    <button onclick="generateBarPlots()">Generate Bar Plot</button>
+
+    <div id="in_poss_buttons" style="display:none;">
+        {% for feature in in_poss_features %}
+        <button id="toggle{{ feature }}_in_possBtn" onclick="toggleBarPlot('{{ feature }}', 'in_poss')" disabled>{{ feature }}</button>
+        <img id="{{ feature }}_in_possBarPlot" src="#" alt="{{ feature }}" style="display:none;">
+        {% endfor %}
+    </div>
+
+    <div id="out_of_poss_buttons" style="display:none;">
+        {% for feature in out_of_poss_features %}
+        <button id="toggle{{ feature }}_out_of_possBtn" onclick="toggleBarPlot('{{ feature }}', 'out_of_poss')" disabled>{{ feature }}</button>
+        <img id="{{ feature }}_out_of_possBarPlot" src="#" alt="{{ feature }}" style="display:none;">
+        {% endfor %}
+    </div>
+
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Option</title>
+    <script>
+        function updateButtonState() {
+            var team = "{{ team }}";
+            var league = "{{ league }}";
+            var recommendButton = document.getElementById('recommendButton');
+
+            if (league !== "None") {
+                recommendButton.disabled = true;
+                recommendButton.title = "This option is not available for leagues.";
+            } else {
+                recommendButton.disabled = false;
+                recommendButton.title = "";
+            }
+        }
+
+        window.onload = updateButtonState;
+    </script>
+</head>
+<body>
+    <h1>Select an Option for {{ league or team }}</h1>
+    <form action="{{ url_for('recommend_playing_style') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit" id="recommendButton">Recommend Playing Style</button>
+    </form>
+    <form action="{{ url_for('compare_cluster_statistics') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Compare Cluster Statistics</button>
+    </form>
+    <form action="{{ url_for('visualize_clustering') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Visualize the Clustering</button>
+    </form>
+    <form action="{{ url_for('check_cluster_probabilities') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit">Check Cluster Probabilities</button>
+    </form>
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>

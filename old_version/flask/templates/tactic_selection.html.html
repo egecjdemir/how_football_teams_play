@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Tactic Type</title>
+</head>
+<body>
+    <h1>Select Tactic Type for {{ team if team else league }}</h1>
+    <form action="{{ url_for('recommend_playing_style') }}" method="post">
+        <input type="hidden" name="team" value="{{ team }}">
+        <input type="hidden" name="league" value="{{ league }}">
+        <button type="submit" name="tactic_type" value="overall">Recommend Overall Tactics</button>
+        <button type="submit" name="tactic_type" value="custom">Recommend Custom Tactics</button>
+    </form>
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>

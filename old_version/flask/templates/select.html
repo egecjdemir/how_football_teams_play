@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select League or Team</title>
+    <script>
+        function disableInput(inputId, triggerId) {
+            var input = document.getElementById(inputId);
+            var trigger = document.getElementById(triggerId);
+            input.disabled = trigger.value.trim() !== '';
+        }
+    </script>
+</head>
+<body>
+    <h1>Select a Football League or Enter a Team Name</h1>
+    <form action="{{ url_for('options') }}" method="post">
+        <label for="team">Team Name:</label>
+        <input type="text" id="team" name="team" list="team-names" oninput="disableInput('league', 'team')">
+        <datalist id="team-names">
+            {% for name in team_names %}
+            <option value="{{ name }}">
+            {% endfor %}
+        </datalist><br><br>
+        <label for="league">Select League:</label>
+        <select id="league" name="league" onchange="disableInput('team', 'league')">
+            <option value="">--Select a League--</option>
+            {% for league in leagues %}
+            <option value="{{ league }}">{{ league }}</option>
+            {% endfor %}
+        </select><br><br>
+        <button type="submit">Submit</button>
+    </form>
+    <button onclick="window.location='{{ url_for('welcome') }}';">Go Back</button>
+</body>
+</html>

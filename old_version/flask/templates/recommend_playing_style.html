@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recommend Playing Style</title>
+    <script>
+        function toggleImage(imgId) {
+            var img = document.getElementById(imgId);
+            if (img.style.display === 'none') {
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+
+        function toggleDatasetImage(dataset, plotType) {
+            var imgId = `${dataset}_${plotType}`;
+            var img = document.getElementById(imgId);
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = `/static/images/${dataset}_${plotType}.png?` + new Date().getTime(); // Force refresh
+            }
+            toggleImage(imgId);
+        }
+    </script>
+</head>
+<body>
+    <h1>Recommend Playing Style</h1>
+
+    <h2>Ultimate Clusters for {{ team if team else league }}</h2>
+    <p>In Possession: {{ in_poss_cluster }}</p>
+    <p>Out of Possession: {{ out_of_poss_cluster }}</p>
+    <p>In Transition Possession: {{ trans_in_poss_cluster }}</p>
+    <p>In Transition Out of Possession: {{ trans_out_of_poss_cluster }}</p>
+    <p></p>
+    <p>View heatmaps below to see the best playing style for each game phase against {{ team if team else league }}.</p>
+
+    {% for dataset in datasets %}
+        <h2>{{ dataset.replace('_', ' ').capitalize() }}</h2>
+
+        <button onclick="toggleDatasetImage('{{ dataset }}', 'outcome_matrix')">Toggle Outcome Matrix</button>
+        <img id="{{ dataset }}_outcome_matrix" src="#" alt="Outcome Matrix" style="display:none;">
+
+        <button onclick="toggleDatasetImage('{{ dataset }}', 'outcome_percentages')">Toggle Outcome Percentages</button>
+        <img id="{{ dataset }}_outcome_percentages" src="#" alt="Outcome Percentages" style="display:none;">
+
+        <button onclick="toggleDatasetImage('{{ dataset }}', 'outcome_heatmap')">Toggle Outcome Heatmap</button>
+        <img id="{{ dataset }}_outcome_heatmap" src="#" alt="Outcome Heatmap" style="display:none;">
+    {% endfor %}
+
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>

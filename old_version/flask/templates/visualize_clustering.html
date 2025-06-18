@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visualize Clustering</title>
+    <script>
+        function disableButton(buttonId) {
+            var button = document.getElementById(buttonId);
+            button.disabled = true;
+        }
+
+        function toggleImage(imgId) {
+            var img = document.getElementById(imgId);
+            if (img.style.display === 'none') {
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+
+        function generatePlots() {
+            fetch('/dendrogram', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ team: "{{ team }}", league: "{{ league }}" })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    disableButton('generatePlotsBtn');
+                    document.getElementById('toggleDendroBtn').disabled = false;
+                    document.getElementById('toggleScatterBtn').disabled = false;
+                    alert('Plots generated successfully!');
+                } else {
+                    alert('Error generating plots: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error generating plots:', error));
+        }
+
+        function toggleDendrogram() {
+            var img = document.getElementById('dendrogram');
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = "/static/images/dendro.png?" + new Date().getTime(); // Force refresh
+            }
+            toggleImage('dendrogram');
+        }
+
+        function toggleScatterPlot() {
+            var img = document.getElementById('scatterPlot');
+            if (!img.src || img.src.endsWith('#')) {
+                img.src = "/static/images/scatter.png?" + new Date().getTime(); // Force refresh
+            }
+            toggleImage('scatterPlot');
+        }
+    </script>
+</head>
+<body>
+    <h1>Visualize Clustering for {{ team if team != "None" else league }}</h1>
+    <button id="generatePlotsBtn" onclick="generatePlots()">Generate Plots</button>
+    <button id="toggleDendroBtn" onclick="toggleDendrogram()" disabled>Toggle Dendrogram</button>
+    <img id="dendrogram" src="#" alt="Dendrogram" style="display:none;">
+
+    <button id="toggleScatterBtn" onclick="toggleScatterPlot()" disabled>Toggle Scatter Plot</button>
+    <img id="scatterPlot" src="#" alt="Scatter Plot" style="display:none;">
+
+    <button onclick="window.location='{{ url_for('select') }}';">Go Back</button>
+</body>
+</html>
